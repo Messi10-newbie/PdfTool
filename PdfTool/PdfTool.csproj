@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- windows10.0.19041.0 unlocks Windows.Data.Pdf (built-in PDF renderer, used by the editor) -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <Nullable>disable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>PdfTool</RootNamespace>
+    <AssemblyName>PdfTool</AssemblyName>
+
+    <!-- App identity: shows in the exe's Properties > Details and in the installer -->
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <Product>PdfTool</Product>
+    <Description>Merge, split, convert and edit PDFs - offline</Description>
+    <Company>Deveswar Mohan</Company>
+    <Copyright>Copyright (c) 2026 Deveswar Mohan</Copyright>
+    <Version>1.1.0</Version>
+
+    <!-- Used by "dotnet publish": one self-contained, compressed exe -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PDFsharp" Version="6.1.1" />
+  </ItemGroup>
+
+</Project>
