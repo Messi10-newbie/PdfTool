@@ -1,8 +1,11 @@
-# PdfTool
+# PdfTool - Developer Guide
 
-A personal Windows desktop app for working with PDF files offline. No hosting,
-no subscriptions, no cloud. Everything runs locally on the user's machine.
-Shipped as a single self-contained exe plus an Inno Setup installer.
+How PdfTool is built, the conventions the code follows, and the pitfalls already
+solved. Read this before changing the code. For what the app does, see the
+[README](../README.md).
+
+PdfTool is a Windows desktop app for working with PDF files fully offline.
+It ships as a single self-contained exe plus an Inno Setup installer.
 
 ## Tech stack
 
@@ -10,35 +13,31 @@ Shipped as a single self-contained exe plus an Inno Setup installer.
 - Windows Forms (WinForms), UI built entirely in code
 - PDFsharp 6.1.1 (NuGet, MIT licence) - writes/modifies PDFs
 - `Windows.Data.Pdf` (built into Windows 10/11, no NuGet) - renders pages to images for the editor
-- Inno Setup 6 (free) - builds the installer; installed per-user at `%LOCALAPPDATA%\Programs\Inno Setup 6`
-- Built in Visual Studio 2022
-
-## Repository
-
-- GitHub: https://github.com/Messi10-newbie/PdfTool  ·  local: `C:\Users\Deveswar Mohan\source\repos\PdfTool`
-- Commit in small, focused steps with clear messages. New features on a branch -> PR.
+- Inno Setup 6 (free) - builds the installer
+- Visual Studio 2022+ or the `dotnet` CLI
 
 ## Project layout
 
 ```
 PdfTool/                    # repo root
 ├── PdfTool.slnx            # solution (open this in Visual Studio)
-├── README.md · LICENSE (MIT) · CLAUDE.md (this file) · .gitignore · .gitattributes
+├── README.md · LICENSE (MIT) · .gitignore · .gitattributes
+├── docs/                   # DEVELOPMENT.md (this file), screenshots/
 └── PdfTool/                # the app project
-├── PdfTool.csproj    # TFM, app identity (icon/version), single-file publish settings
-├── app.ico           # app icon (red "PDF" tile, 16-256 px)
-├── Program.cs        # entry point; passes command-line files (Open with / drop on exe) to MainForm
-├── MainForm.cs       # main window: header, file list, tool cards, status bar + all batch tools
-├── EditorForm.cs     # "Edit PDF" window UI: tools, fonts, undo/redo, page viewer
-├── PageEdits.cs      # editor model: PageEdit, TextLayout (measure/draw), EditHistory, PdfEditWriter
-├── WindowsFontResolver.cs # lets PDFsharp embed ANY installed Windows font (incl. .ttc bundles)
-├── DocConverter.cs   # .doc/.docx/.rtf/.odt -> PDF via installed office app (no UI code)
-├── Theme.cs          # colours, fonts, DPI scaling S(), RoundRect, Primary/Secondary/Icon buttons
-├── UiControls.cs     # ToolCard, DropZone, FileList (owner-drawn rows, drag-to-reorder)
-├── Dialogs.cs        # styled option dialogs (AskRotate, AskWatermark)
-├── Settings.cs       # remembers last folder in %AppData%\PdfTool\settings.txt
-└── installer/
-    └── PdfTool.iss   # Inno Setup script -> installer\Output\PdfTool-Setup-<ver>.exe
+    ├── PdfTool.csproj    # TFM, app identity (icon/version), single-file publish settings
+    ├── app.ico           # app icon (red "PDF" tile, 16-256 px)
+    ├── Program.cs        # entry point; passes command-line files (Open with / drop on exe) to MainForm
+    ├── MainForm.cs       # main window: header, file list, tool cards, status bar + all batch tools
+    ├── EditorForm.cs     # "Edit PDF" window UI: tools, fonts, undo/redo, page viewer
+    ├── PageEdits.cs      # editor model: PageEdit, TextLayout (measure/draw), EditHistory, PdfEditWriter
+    ├── WindowsFontResolver.cs # lets PDFsharp embed ANY installed Windows font (incl. .ttc bundles)
+    ├── DocConverter.cs   # .doc/.docx/.rtf/.odt -> PDF via installed office app (no UI code)
+    ├── Theme.cs          # colours, fonts, DPI scaling S(), RoundRect, Primary/Secondary/Icon buttons
+    ├── UiControls.cs     # ToolCard, DropZone, FileList (owner-drawn rows, drag-to-reorder)
+    ├── Dialogs.cs        # styled option dialogs (AskRotate, AskWatermark)
+    ├── Settings.cs       # remembers last folder in %AppData%\PdfTool\settings.txt
+    └── installer/
+        └── PdfTool.iss   # Inno Setup script -> installer\Output\PdfTool-Setup-<ver>.exe
 ```
 
 ## Important conventions
@@ -48,7 +47,7 @@ PdfTool/                    # repo root
 - **Look & feel comes from `Theme.cs`.** Use its colours/fonts and `Theme.PrimaryButton`,
   `SecondaryButton`, `IconButton` - never default grey WinForms buttons. Icons are
   characters from the built-in "Segoe MDL2 Assets" font (`Theme.Icon(size)`, e.g. `"\uE710"` = plus).
-- **Scale every pixel size with `Theme.S(this, px)`** (the app runs at 125% DPI on this PC).
+- **Scale every pixel size with `Theme.S(this, px)`** (Windows display scaling is often 125-150%).
   Prefer Dock / AutoSize / TableLayoutPanel over absolute positions.
 - **Adding a tool** = one `AddTool(glyph, title, description, colour, handler, needs)` line
   in `MainForm.BuildToolsPanel()` under the right `Section(...)`, plus a handler method.
@@ -69,7 +68,7 @@ PdfTool/                    # repo root
   does not accept raw doubles for `page.Width` / `page.Height`.
 - Keep each file under ~600 lines; split UI pieces into `UiControls.cs` / `Dialogs.cs`.
 
-## WinForms gotchas (already hit these)
+## WinForms gotchas (learned the hard way)
 
 - Avoid naming members `Move`, `Scale` or `Select` on a Form — they collide with `Control.Move` / `Scale` / `Select`.
 - A **docked** child inside an **AutoSize** form makes the form collapse to a sliver
@@ -81,7 +80,7 @@ PdfTool/                    # repo root
 - Event handlers that fire during construction (e.g. `RadioButton.Checked = true`)
   can run before later controls exist — null-check (EditorForm's `canvas` bit us).
 
-## PDFsharp 6.1 gotchas (already hit these)
+## PDFsharp 6.1 gotchas (learned the hard way)
 
 - `GlobalFontSettings.UseWindowsFontsUnderWindows` does NOT exist in 6.1.
   Windows fonts resolve automatically. Do not add it back.
@@ -102,7 +101,7 @@ PdfTool/                    # repo root
   (`HKLM/HKCU\...\CurrentVersion\Fonts`) to its file, and extracts single fonts out of
   `.ttc` collections. It MUST be installed (`WindowsFontResolver.Install()`, done in
   `Program.Main`) before any XFont is used - PDFsharp won't accept a resolver after first use.
-  281/283 fonts work on this PC; `TextLayout.CanEmbed` rejects the rest at pick time.
+  On a typical Windows 11 PC ~99% of installed fonts work; `TextLayout.CanEmbed` rejects the rest at pick time.
 
 ## Current features
 
@@ -141,8 +140,8 @@ Also: remembers last folder; files passed on the command line (drop onto the exe
 ### Word -> PDF notes
 
 - Uses whatever is registered as COM `Word.Application` via `dynamic` (no interop NuGet).
-  On this PC that is **WPS Office**, not MS Word (WPS hijacked the registration;
-  `WINWORD.EXE /r` would restore Word). Falls back to LibreOffice `soffice --headless`.
+  If WPS Office is installed it may own that registration instead of MS Word
+  (`WINWORD.EXE /r` restores Word). Falls back to LibreOffice `soffice --headless`.
 - WPS quits itself after each document closes -> next call throws RPC_E_SERVER_UNAVAILABLE
   (0x800706BA). `DocConverter` restarts the app and retries once. Keep that logic.
 - Pass a dummy `PasswordDocument` to `Documents.Open` so protected files fail instead of
@@ -150,7 +149,7 @@ Also: remembers last folder; files passed on the command line (drop onto the exe
 - Runs on a dedicated STA thread (COM office apps expect STA).
 - ~4 s per file with WPS (it restarts each time).
 
-## Planned / not built yet
+## Roadmap
 
 - Editor: add image / signature, highlight, freehand pen, shapes, fill form fields
 - Editor: detect the original text's font automatically (needs text extraction - not available in PDFsharp)
@@ -159,17 +158,7 @@ Also: remembers last folder; files passed on the command line (drop onto the exe
 - Compress (re-encode embedded images)
 - Password protect / remove password
 - Extract text
-- Web version as a PWA (separate project; pdf-lib + pdf.js, see conversation notes)
-
-## How I want you to help
-
-- Give full working code directly, minimal explanation.
-- Step-by-step when it involves clicking around Visual Studio.
-- Keep everything free and offline — no paid libraries, no API calls, no
-  hosting. Check the licence before suggesting any new NuGet package
-  (MIT/Apache fine, AGPL like iText is not).
-- This is a learning project. Prefer clear, readable code over clever code,
-  and say briefly what a non-obvious line does.
+- Web version as a PWA (separate project; pdf-lib + pdf.js)
 
 ## Build, run, release
 
@@ -180,7 +169,7 @@ Release - from the `PdfTool\` project folder (bump `<Version>` in PdfTool.csproj
 
 ```
 dotnet publish -c Release -o publish
-"%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer\PdfTool.iss
+iscc installer\PdfTool.iss
 ```
 
 - `publish\PdfTool.exe` — single ~79 MB self-contained exe, runs without .NET installed.

@@ -15,3 +15,6 @@ publish/
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# Local AI assistant notes (developer docs live in docs/DEVELOPMENT.md)
+CLAUDE.md
