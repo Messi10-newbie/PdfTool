@@ -88,13 +88,20 @@ iscc installer/PdfTool.iss        # -> installer/Output/PdfTool-Setup-<version>.
 - **Fonts:** out of the box PDFsharp could embed only 7 of the 349 fonts installed on Windows.
   A custom font resolver (`WindowsFontResolver.cs`) reads the Windows font registry and
   extracts individual fonts from `.ttc` collections — 281 fonts now work, including Calibri and Cambria.
+  [Write-up](docs/write-ups/01-fonts.md)
 - **Rotated pages:** edits landed off-page on PDFs with `/Rotate 90/270` because PDFsharp
   flips the y-axis using the swapped page height. `PdfEditWriter` compensates and maps
-  "what you see" coordinates onto the unrotated page.
+  "what you see" coordinates onto the unrotated page. [Write-up](docs/write-ups/02-rotated-pages.md)
 - **Word conversion via COM:** WPS Office registers itself as `Word.Application` and exits
   after every document; the converter detects the dead process and restarts it.
+  [Write-up](docs/write-ups/03-wps-com.md)
 - **WYSIWYG editor:** screen preview and saved PDF share the same text layout code and
   match to within ~1 pixel at 200% zoom.
+- **Tests caught a shipped bug:** extracting the PDF logic from the UI made it testable, and
+  the first test run found Merge/Watermark reporting "failed" after a successful save.
+  [Write-up](docs/write-ups/04-tests-found-a-bug.md)
+
+All write-ups: [docs/write-ups](docs/write-ups/README.md)
 
 ## For developers
 
