@@ -186,8 +186,23 @@ Test Explorer in Visual Studio. ~1 s, no network, nothing to install.
 - The test project sets `ValidateExecutableReferencesMatchSelfContained=false` because the
   app is a self-contained exe; the tests only need its code.
 
-Release - from the `PdfTool\` project folder (bump `<Version>` in PdfTool.csproj AND
-`AppVersion` in installer\PdfTool.iss first):
+### Continuous integration
+
+`.github/workflows/ci.yml` builds and runs the tests on GitHub (windows-latest) for every
+push and pull request to `main`. A red X on a PR means don't merge it yet.
+
+### Release (automatic)
+
+1. Bump `<Version>` in PdfTool.csproj and the default `AppVersion` in installer\PdfTool.iss,
+   and move the CHANGELOG's `[Unreleased]` notes under the new version. Commit to `main`.
+2. Tag and push: `git tag v1.2.0` then `git push origin v1.2.0`.
+3. `.github/workflows/release.yml` runs the tests, publishes the exe, builds the installer
+   (version taken from the tag) and creates the GitHub Release with both files attached.
+   Edit the release notes on GitHub afterwards if needed.
+
+### Release (by hand, on this PC)
+
+From the `PdfTool\` project folder (bump the versions as in step 1 first):
 
 ```
 dotnet publish -c Release -o publish

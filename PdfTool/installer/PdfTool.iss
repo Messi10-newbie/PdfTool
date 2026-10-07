@@ -6,7 +6,10 @@
 ; Result: installer\Output\PdfTool-Setup-<version>.exe
 
 #define AppName "PdfTool"
-#define AppVersion "1.1.0"
+; The release workflow passes the version from the git tag: ISCC /DAppVersion=1.2.0
+#ifndef AppVersion
+  #define AppVersion "1.1.0"
+#endif
 #define AppPublisher "Deveswar Mohan"
 #define AppExe "PdfTool.exe"
 

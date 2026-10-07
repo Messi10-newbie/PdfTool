@@ -1,0 +1,51 @@
+# Pushing a version tag (e.g. v1.2.0) tests the code, builds the portable exe and the
+# installer, and publishes them as a GitHub Release. The version comes from the tag.
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write   # needed to create the release
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Version from tag
+        id: ver
+        shell: pwsh
+        run: echo "version=$('${{ github.ref_name }}'.TrimStart('v'))" >> $env:GITHUB_OUTPUT
+
+      - name: Test
+        run: dotnet test PdfTool.slnx -c Release
+
+      - name: Publish single-file exe
+        working-directory: PdfTool
+        run: dotnet publish -c Release -o publish -p:Version=${{ steps.ver.outputs.version }}
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        working-directory: PdfTool
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=${{ steps.ver.outputs.version }} installer\PdfTool.iss
+          Copy-Item publish\PdfTool.exe "installer\Output\PdfTool-${{ steps.ver.outputs.version }}-portable.exe"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: PdfTool ${{ steps.ver.outputs.version }}
+          generate_release_notes: true
+          files: |
+            PdfTool/installer/Output/PdfTool-Setup-${{ steps.ver.outputs.version }}.exe
+            PdfTool/installer/Output/PdfTool-${{ steps.ver.outputs.version }}-portable.exe
