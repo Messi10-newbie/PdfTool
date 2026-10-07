@@ -624,7 +624,7 @@ namespace PdfTool
                 InitialDirectory = Settings.LastFolder
             };
             if (dlg.ShowDialog() != DialogResult.OK) return;
-            if (MainForm.SamePath(dlg.FileName, srcPath)) { Warn("Pick a different output name - can't overwrite the file being edited."); return; }
+            if (PdfOps.SamePath(dlg.FileName, srcPath)) { Warn("Pick a different output name - can't overwrite the file being edited."); return; }
 
             try
             {
