@@ -31,4 +31,9 @@
     <PackageReference Include="PDFsharp" Version="6.1.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Lets the test project use internal classes (e.g. EditHistory) -->
+    <InternalsVisibleTo Include="PdfTool.Tests" />
+  </ItemGroup>
+
 </Project>
