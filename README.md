@@ -61,6 +61,12 @@ cd PdfTool/PdfTool
 dotnet run
 ```
 
+Run the tests (from the repo root):
+
+```bash
+dotnet test
+```
+
 Build the installer (needs [Inno Setup 6](https://jrsoftware.org/isinfo.php)):
 
 ```bash

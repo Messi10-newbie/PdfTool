@@ -23,11 +23,13 @@ PdfTool/                    # repo root
 ├── PdfTool.slnx            # solution (open this in Visual Studio)
 ├── README.md · LICENSE (MIT) · .gitignore · .gitattributes
 ├── docs/                   # DEVELOPMENT.md (this file), screenshots/
+├── PdfTool.Tests/          # xUnit tests (see "Tests" below)
 └── PdfTool/                # the app project
     ├── PdfTool.csproj    # TFM, app identity (icon/version), single-file publish settings
     ├── app.ico           # app icon (red "PDF" tile, 16-256 px)
     ├── Program.cs        # entry point; passes command-line files (Open with / drop on exe) to MainForm
-    ├── MainForm.cs       # main window: header, file list, tool cards, status bar + all batch tools
+    ├── MainForm.cs       # main window: header, file list, tool cards, status bar, tool click handlers
+    ├── PdfOps.cs         # the batch tools' PDF work (merge/split/rotate/images/watermark) + ParsePages - no UI code
     ├── EditorForm.cs     # "Edit PDF" window UI: tools, fonts, undo/redo, page viewer
     ├── PageEdits.cs      # editor model: PageEdit, TextLayout (measure/draw), EditHistory, PdfEditWriter
     ├── WindowsFontResolver.cs # lets PDFsharp embed ANY installed Windows font (incl. .ttc bundles)
@@ -51,11 +53,13 @@ PdfTool/                    # repo root
   Prefer Dock / AutoSize / TableLayoutPanel over absolute positions.
 - **Adding a tool** = one `AddTool(glyph, title, description, colour, handler, needs)` line
   in `MainForm.BuildToolsPanel()` under the right `Section(...)`, plus a handler method.
+  The handler only does UI (ask for options/output path, report the result); the PDF work
+  goes in a `PdfOps` method that takes paths + options and throws on failure - with a test.
   `needs` returns `null` when the tool can run, or a short hint ("Add 2 or more PDFs")
   shown on the card. Handlers can therefore assume their input exists.
 - Single-PDF tools use `SinglePdf()`: the selected PDF, or the only PDF in the list.
 - Tool option prompts go in `Dialogs.cs` (auto-sizing, styled). Don't use bare InputBox-style forms.
-- Default output names come from the input: `OutputName(src, "rotated")` -> `report_rotated.pdf`.
+- Default output names come from the input: `PdfOps.OutputName(src, "rotated")` -> `report_rotated.pdf`.
   Save/Open/Folder dialogs start in `Settings.LastFolder` and call `Settings.Remember(...)`.
 - Status messages: `Done(msg, outputPath)` (green, shows "Show in folder"), `Warn(msg)` (red),
   `Info(msg)` (neutral). Do not use `MessageBox.Show` for normal feedback.
@@ -63,7 +67,7 @@ PdfTool/                    # repo root
   around it and report progress via `BeginInvoke`.
 - Every file operation is wrapped in try/catch, with the error surfaced through
   `Warn(...)`. Never let an exception crash the app.
-- Page ranges from the user go through `ParsePages(text, pageCount)` (1-based, "all" supported). Reuse it.
+- Page ranges from the user go through `PdfOps.ParsePages(text, pageCount)` (1-based, "all" supported). Reuse it.
 - Use `XUnit.FromPoint(...)` and `.Point` when setting page sizes — PDFsharp 6
   does not accept raw doubles for `page.Width` / `page.Height`.
 - Keep each file under ~600 lines; split UI pieces into `UiControls.cs` / `Dialogs.cs`.
@@ -94,6 +98,9 @@ PdfTool/                    # repo root
   it: set `Rotate = 0`, `TranslateTransform(0, page.Height.Point - MediaBox.Height)`, apply
   the visual->unrotated rotation, draw, restore `Rotate`. Do NOT set `page.Orientation`
   to work around it — that corrupts the page on save.
+- **`Save()` locks the document:** reading anything afterwards (even `PageCount`) throws
+  "The document was already saved". Read what you need first. (v1.1.0 shipped with this bug
+  in Merge/Watermark - the tests caught it.)
 - Both PDFsharp and Windows.Data.Pdf have a `PdfDocument` class — use the `SharpDoc` /
   `WinPdfDoc` aliases.
 - **Fonts:** out of the box PDFsharp 6.1 finds only ~7 Windows fonts (no Calibri, Cambria,
@@ -163,6 +170,21 @@ Also: remembers last folder; files passed on the command line (drop onto the exe
 ## Build, run, release
 
 From the repo root: `dotnet build PdfTool.slnx`. To run: `cd PdfTool` then `dotnet run`.
+
+## Tests
+
+`PdfTool.Tests` is an xUnit project. Run `dotnet test` from the repo root, or use
+Test Explorer in Visual Studio. ~1 s, no network, nothing to install.
+
+- Tests build tiny PDFs on the fly in a temp folder (`TestFiles`), deleted afterwards - no
+  sample files in the repo. Page widths double as page IDs, so order checks are easy.
+- `TestFiles` installs `WindowsFontResolver` first, same as `Program.Main`.
+- Covered: `PdfOps` (every tool, page-range parsing, refusing to overwrite the source),
+  `EditHistory` undo/redo, `PdfEditWriter` (incl. the rotated-page regression).
+- Not covered: WinForms UI and Word -> PDF (needs an office app). Check those by hand.
+- `internal` classes are visible to the tests via `InternalsVisibleTo` in PdfTool.csproj.
+- The test project sets `ValidateExecutableReferencesMatchSelfContained=false` because the
+  app is a self-contained exe; the tests only need its code.
 
 Release - from the `PdfTool\` project folder (bump `<Version>` in PdfTool.csproj AND
 `AppVersion` in installer\PdfTool.iss first):

@@ -30,8 +30,9 @@ namespace PdfTool
                 for (int i = 0; i < input.PageCount; i++)
                     output.AddPage(input.Pages[i]);
             }
+            int pageCount = output.PageCount; // read before Save - PDFsharp locks the document once saved
             output.Save(outPath);
-            return output.PageCount;
+            return pageCount;
         }
 
         // One file per page: "report.pdf" -> report_page1.pdf, report_page2.pdf, ...
@@ -92,8 +93,9 @@ namespace PdfTool
                 gfx.RotateTransform(-Math.Atan2(h, w) * 180 / Math.PI); // along the diagonal
                 gfx.DrawString(text, font, brush, new XPoint(-size.Width / 2, size.Height / 4));
             }
+            int pageCount = doc.PageCount; // read before Save - PDFsharp locks the document once saved
             doc.Save(outPath);
-            return doc.PageCount;
+            return pageCount;
         }
 
         // Turns the given 1-based pages by angle (90, 180 or 270 degrees clockwise).

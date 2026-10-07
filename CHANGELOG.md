@@ -3,6 +3,14 @@
 All notable changes to PdfTool are listed here.
 Format based on [Keep a Changelog](https://keepachangelog.com/); versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- Merge and Watermark showed "failed" even though the output file was written correctly.
+
+### Changed
+- PDF operations moved out of the main window into `PdfOps`, covered by an xUnit test project (`PdfTool.Tests`).
+
 ## [1.1.0] - 2026-10-04
 
 ### Added
