@@ -4,9 +4,6 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
-using PdfSharp.Drawing;
-using PdfSharp.Pdf;
-using PdfSharp.Pdf.IO;
 
 namespace PdfTool
 {
@@ -388,9 +385,6 @@ namespace PdfTool
             return fbd.SelectedPath;
         }
 
-        // "report.pdf" + "rotated" -> "report_rotated.pdf"
-        private static string OutputName(string src, string suffix) => Path.GetFileNameWithoutExtension(src) + "_" + suffix + ".pdf";
-
         // ---------- MERGE ----------
         private void BtnMerge_Click(object sender, EventArgs e)
         {
@@ -400,15 +394,8 @@ namespace PdfTool
 
             try
             {
-                using var output = new PdfDocument();
-                foreach (var file in pdfs)
-                {
-                    using var input = PdfReader.Open(file, PdfDocumentOpenMode.Import);
-                    for (int i = 0; i < input.PageCount; i++)
-                        output.AddPage(input.Pages[i]);
-                }
-                output.Save(outPath);
-                Done($"Merged {pdfs.Count} PDFs ({output.PageCount} pages) into {Path.GetFileName(outPath)}", outPath);
+                int pages = PdfOps.Merge(pdfs, outPath);
+                Done($"Merged {pdfs.Count} PDFs ({pages} pages) into {Path.GetFileName(outPath)}", outPath);
             }
             catch (Exception ex) { Warn("Merge failed: " + ex.Message); }
         }
@@ -422,18 +409,9 @@ namespace PdfTool
 
             try
             {
-                string baseName = Path.GetFileNameWithoutExtension(src);
-                using var input = PdfReader.Open(src, PdfDocumentOpenMode.Import);
-                string first = null;
-                for (int i = 0; i < input.PageCount; i++)
-                {
-                    using var single = new PdfDocument();
-                    single.AddPage(input.Pages[i]);
-                    string path = Path.Combine(folder, $"{baseName}_page{i + 1}.pdf");
-                    single.Save(path);
-                    first ??= path; // remember the first file so "Show in folder" selects it
-                }
-                Done($"Split {Path.GetFileName(src)} into {input.PageCount} files", first);
+                var files = PdfOps.Split(src, folder);
+                // select the first file so "Show in folder" points at the output
+                Done($"Split {Path.GetFileName(src)} into {files.Count} files", files.Count > 0 ? files[0] : folder);
             }
             catch (Exception ex) { Warn("Split failed: " + ex.Message); }
         }
@@ -447,17 +425,7 @@ namespace PdfTool
 
             try
             {
-                using var doc = new PdfDocument();
-                foreach (var file in imgs)
-                {
-                    using XImage img = XImage.FromFile(file);
-                    var page = doc.AddPage();
-                    page.Width = XUnit.FromPoint(img.PixelWidth * 72.0 / img.HorizontalResolution);
-                    page.Height = XUnit.FromPoint(img.PixelHeight * 72.0 / img.VerticalResolution);
-                    using var gfx = XGraphics.FromPdfPage(page);
-                    gfx.DrawImage(img, 0, 0, page.Width.Point, page.Height.Point);
-                }
-                doc.Save(outPath);
+                PdfOps.ImagesToPdf(imgs, outPath);
                 Done($"Created {Path.GetFileName(outPath)} from {imgs.Count} image(s)", outPath);
             }
             catch (Exception ex) { Warn("Images to PDF failed: " + ex.Message); }
@@ -469,34 +437,13 @@ namespace PdfTool
             string src = SinglePdf();
             if (!Dialogs.AskWatermark(this, Path.GetFileName(src), out string text, out int opacity, out Color color)) return;
 
-            string outPath = AskSavePath(OutputName(src, "watermarked"));
+            string outPath = AskSavePath(PdfOps.OutputName(src, "watermarked"));
             if (outPath == null) return;
-            if (SamePath(outPath, src)) { Warn("Pick a different output name - can't overwrite the file being read."); return; }
 
             try
             {
-                using var doc = PdfReader.Open(src, PdfDocumentOpenMode.Modify);
-                // opacity % -> alpha 0-255
-                var brush = new XSolidBrush(XColor.FromArgb(opacity * 255 / 100, color.R, color.G, color.B));
-
-                for (int i = 0; i < doc.PageCount; i++)
-                {
-                    var page = doc.Pages[i];
-                    using var gfx = XGraphics.FromPdfPage(page, XGraphicsPdfPageOptions.Append);
-                    double w = page.Width.Point, h = page.Height.Point;
-
-                    // Size the text so it spans ~70% of the page diagonal.
-                    var probe = new XFont("Arial", 100, XFontStyleEx.Bold);
-                    double fontSize = 100 * (Math.Sqrt(w * w + h * h) * 0.7) / gfx.MeasureString(text, probe).Width;
-                    var font = new XFont("Arial", Math.Max(12, Math.Min(200, fontSize)), XFontStyleEx.Bold);
-                    var size = gfx.MeasureString(text, font);
-
-                    gfx.TranslateTransform(w / 2, h / 2);
-                    gfx.RotateTransform(-Math.Atan2(h, w) * 180 / Math.PI); // along the diagonal
-                    gfx.DrawString(text, font, brush, new XPoint(-size.Width / 2, size.Height / 4));
-                }
-                doc.Save(outPath);
-                Done($"Watermarked {doc.PageCount} page(s) into {Path.GetFileName(outPath)}", outPath);
+                int pages = PdfOps.Watermark(src, outPath, text, opacity, color);
+                Done($"Watermarked {pages} page(s) into {Path.GetFileName(outPath)}", outPath);
             }
             catch (Exception ex) { Warn("Watermark failed: " + ex.Message); }
         }
@@ -507,25 +454,16 @@ namespace PdfTool
             string src = SinglePdf();
             try
             {
-                int pageCount;
-                using (var probe = PdfReader.Open(src, PdfDocumentOpenMode.Import)) pageCount = probe.PageCount;
+                int pageCount = PdfOps.PageCount(src);
                 if (!Dialogs.AskRotate(this, Path.GetFileName(src), pageCount, out int angle, out string pagesText)) return;
 
-                var pages = ParsePages(pagesText, pageCount);
+                var pages = PdfOps.ParsePages(pagesText, pageCount);
                 if (pages == null) { Warn($"Bad page list \"{pagesText}\". Use e.g. 1,3-5 (this PDF has {pageCount} pages)."); return; }
 
-                string outPath = AskSavePath(OutputName(src, "rotated"));
+                string outPath = AskSavePath(PdfOps.OutputName(src, "rotated"));
                 if (outPath == null) return;
-                if (SamePath(outPath, src)) { Warn("Pick a different output name - can't overwrite the file being read."); return; }
 
-                using var doc = PdfReader.Open(src, PdfDocumentOpenMode.Modify);
-                foreach (int p in pages)
-                {
-                    var page = doc.Pages[p - 1]; // list is 1-based, Pages[] is 0-based
-                    // Rotate is stored in the PDF as 0/90/180/270; add and wrap around.
-                    page.Rotate = (page.Rotate + angle) % 360;
-                }
-                doc.Save(outPath);
+                PdfOps.Rotate(src, outPath, angle, pages);
                 Done($"Rotated {pages.Count} page(s) into {Path.GetFileName(outPath)}", outPath);
             }
             catch (Exception ex) { Warn("Rotate failed: " + ex.Message); }
@@ -577,40 +515,6 @@ namespace PdfTool
             if (busy) lnkShowFile.Visible = false;
             UseWaitCursor = busy;
         }
-
-        // Turns "all" or "1,3-5" into a sorted list of 1-based page numbers.
-        // Returns null if the text is invalid or out of range. Reusable for Delete/Reorder later.
-        private static List<int> ParsePages(string text, int pageCount)
-        {
-            var result = new SortedSet<int>(); // SortedSet = no duplicates, kept in order
-            text = text.Trim().ToLower();
-
-            if (text == "all" || text == "")
-            {
-                for (int i = 1; i <= pageCount; i++) result.Add(i);
-                return new List<int>(result);
-            }
-
-            foreach (var part in text.Split(','))
-            {
-                var bits = part.Trim().Split('-');
-                if (bits.Length == 1 && int.TryParse(bits[0], out int single))
-                {
-                    if (single < 1 || single > pageCount) return null;
-                    result.Add(single);
-                }
-                else if (bits.Length == 2 && int.TryParse(bits[0], out int from) && int.TryParse(bits[1], out int to))
-                {
-                    if (from < 1 || to > pageCount || from > to) return null;
-                    for (int i = from; i <= to; i++) result.Add(i);
-                }
-                else return null;
-            }
-            return new List<int>(result);
-        }
-
-        internal static bool SamePath(string a, string b) =>
-            string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase);
 
         private static void OpenWithDefaultApp(string path)
         {
