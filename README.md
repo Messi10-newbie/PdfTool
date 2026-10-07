@@ -4,6 +4,7 @@
 No uploads, no accounts, no subscriptions: your files never leave your PC.
 
 [![Latest release](https://img.shields.io/github/v/release/Messi10-newbie/PdfTool?label=download&color=e5322d)](https://github.com/Messi10-newbie/PdfTool/releases/latest)
+[![CI](https://github.com/Messi10-newbie/PdfTool/actions/workflows/ci.yml/badge.svg)](https://github.com/Messi10-newbie/PdfTool/actions/workflows/ci.yml)
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078d4)
 ![.NET](https://img.shields.io/badge/.NET-8-512bd4)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
